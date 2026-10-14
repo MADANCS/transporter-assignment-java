@@ -1,0 +1,29 @@
+databases:
+  - name: transporter-db
+    databaseName: transporter_db
+    user: postgres
+    plan: free
+
+services:
+  - type: web
+    name: transporter-assignment-api
+    runtime: java
+    plan: free
+    buildCommand: mvn clean package -DskipTests
+    startCommand: java -jar target/transporter-assignment-1.0.0-SNAPSHOT.jar
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: transporter-db
+          property: connectionString
+      - key: DB_USERNAME
+        fromDatabase:
+          name: transporter-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: transporter-db
+          property: password
+      - key: SPRING_PROFILES_ACTIVE
+        value: default
+    healthCheckPath: /api-docs
