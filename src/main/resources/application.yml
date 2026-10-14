@@ -1,10 +1,9 @@
 spring:
   datasource:
-    # Render injects DATABASE_URL as postgres://user:pass@host:port/db
-    # We convert it to jdbc:postgresql:// format via environment variable
-    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/transporter_db}
-    username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:postgre}
+    # Set by RenderDatabaseUrlProcessor or system properties
+    url: ${SPRING_DATASOURCE_URL:${spring.datasource.url:${JDBC_DATABASE_URL:jdbc:postgresql://localhost:5432/transporter_db}}}
+    username: ${spring.datasource.username:${DB_USERNAME:postgres}}
+    password: ${spring.datasource.password:${DB_PASSWORD:postgre}}
     driver-class-name: org.postgresql.Driver
     hikari:
       connection-timeout: 30000

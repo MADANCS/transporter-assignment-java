@@ -10,97 +10,106 @@ import java.util.Map;
 
 /**
  * Converts Render's DATABASE_URL (postgres:// or postgresql://user:pass@host:port/db)
- * to Spring Boot's JDBC URL format (jdbc:postgresql://host:port/db).
- * Runs before the application context is created.
+ * to Spring Boot's JDBC URL format (jdbc:postgresql://host:port/db?sslmode=prefer).
+ *
+ * Runs both from main() before Spring starts and as an EnvironmentPostProcessor.
  */
 public class RenderDatabaseUrlProcessor implements EnvironmentPostProcessor {
+
+    public static void configureSystemProperties() {
+        String rawUrl = System.getenv("DATABASE_URL");
+        if (rawUrl == null || rawUrl.isBlank()) {
+            return;
+        }
+
+        try {
+            Map<String, String> resolved = parseDatabaseUrl(rawUrl);
+            for (Map.Entry<String, String> entry : resolved.entrySet()) {
+                System.setProperty(entry.getKey(), entry.getValue());
+            }
+            System.out.println("[RenderDatabaseUrlProcessor] Configured system property spring.datasource.url: "
+                    + resolved.get("spring.datasource.url"));
+        } catch (Exception e) {
+            System.err.println("[RenderDatabaseUrlProcessor] Error configuring system properties: " + e.getMessage());
+        }
+    }
+
+    public static Map<String, String> parseDatabaseUrl(String rawUrl) {
+        Map<String, String> props = new HashMap<>();
+
+        if (rawUrl.startsWith("jdbc:")) {
+            props.put("spring.datasource.url", rawUrl);
+            return props;
+        }
+
+        String withoutScheme = rawUrl.replaceFirst("^postgre(?:sql)?://", "");
+
+        String user = "";
+        String pass = "";
+        String hostPortDb = withoutScheme;
+
+        if (withoutScheme.contains("@")) {
+            String[] atParts = withoutScheme.split("@", 2);
+            String[] userPass = atParts[0].split(":", 2);
+            user = userPass[0];
+            pass = userPass.length > 1 ? userPass[1] : "";
+            hostPortDb = atParts[1];
+        }
+
+        String envUser = System.getenv("DB_USERNAME");
+        String envPass = System.getenv("DB_PASSWORD");
+        if (envUser != null && !envUser.isBlank()) {
+            user = envUser;
+        }
+        if (envPass != null && !envPass.isBlank()) {
+            pass = envPass;
+        }
+
+        String[] hostPort = hostPortDb.split("/", 2);
+        String hostAndPort = hostPort[0];
+        String dbNameWithParams = hostPort.length > 1 ? hostPort[1] : "transporter_db";
+
+        String cleanDbName = dbNameWithParams.contains("?")
+                ? dbNameWithParams.substring(0, dbNameWithParams.indexOf('?'))
+                : dbNameWithParams;
+        if (cleanDbName.isBlank()) {
+            cleanDbName = "transporter_db";
+        }
+
+        String jdbcUrl = "jdbc:postgresql://" + hostAndPort + "/" + cleanDbName + "?sslmode=prefer";
+
+        props.put("spring.datasource.url", jdbcUrl);
+        props.put("SPRING_DATASOURCE_URL", jdbcUrl);
+        props.put("JDBC_DATABASE_URL", jdbcUrl);
+        if (!user.isBlank()) {
+            props.put("spring.datasource.username", user);
+            props.put("SPRING_DATASOURCE_USERNAME", user);
+        }
+        if (!pass.isBlank()) {
+            props.put("spring.datasource.password", pass);
+            props.put("SPRING_DATASOURCE_PASSWORD", pass);
+        }
+
+        return props;
+    }
 
     @Override
     public void postProcessEnvironment(ConfigurableEnvironment environment,
                                        SpringApplication application) {
         String rawUrl = System.getenv("DATABASE_URL");
         if (rawUrl == null || rawUrl.isBlank()) {
-            System.out.println("[RenderDatabaseUrlProcessor] DATABASE_URL not set, skipping.");
             return;
         }
 
-        System.out.println("[RenderDatabaseUrlProcessor] Processing DATABASE_URL scheme: "
-                + rawUrl.substring(0, Math.min(rawUrl.indexOf('@') > 0 ? rawUrl.indexOf('@') : 30, rawUrl.length())));
-
-        // If already a JDBC URL, use as-is
-        if (rawUrl.startsWith("jdbc:")) {
-            System.out.println("[RenderDatabaseUrlProcessor] Already a JDBC URL, using directly.");
-            Map<String, Object> props = new HashMap<>();
-            props.put("spring.datasource.url", rawUrl);
-            environment.getPropertySources()
-                    .addFirst(new MapPropertySource("renderDatabaseUrl", props));
-            return;
-        }
-
-        // Handle both postgres:// and postgresql:// schemes (Render uses both)
         try {
-            // Strip the scheme: postgres:// or postgresql://
-            String withoutScheme = rawUrl.replaceFirst("^postgre(?:sql)?://", "");
-
-            // Split user:pass@host:port/db
-            String[] atParts = withoutScheme.split("@", 2);
-            String user;
-            String pass;
-
-            if (atParts.length == 2) {
-                String[] userPass = atParts[0].split(":", 2);
-                user = userPass[0];
-                pass = userPass.length > 1 ? userPass[1] : "";
-            } else {
-                user = "";
-                pass = "";
-            }
-
-            // Prefer explicit Render DB_USERNAME / DB_PASSWORD env vars if provided
-            String envUser = System.getenv("DB_USERNAME");
-            String envPass = System.getenv("DB_PASSWORD");
-            if (envUser != null && !envUser.isBlank()) {
-                user = envUser;
-            }
-            if (envPass != null && !envPass.isBlank()) {
-                pass = envPass;
-            }
-
-            String hostPortDb = atParts.length == 2 ? atParts[1] : atParts[0];
-            // hostPortDb = host:port/dbname or host:port/dbname?params
-            String[] hostPort = hostPortDb.split("/", 2);
-            String hostAndPort = hostPort[0];
-            String dbNameWithParams = hostPort.length > 1 ? hostPort[1] : "transporter_db";
-
-            // Strip existing query params from dbName
-            String cleanDbName = dbNameWithParams.contains("?")
-                    ? dbNameWithParams.substring(0, dbNameWithParams.indexOf('?'))
-                    : dbNameWithParams;
-            if (cleanDbName.isBlank()) {
-                cleanDbName = "transporter_db";
-            }
-
-            // sslmode=prefer works for both internal private networks (no SSL) and external connections (SSL)
-            String jdbcUrl = "jdbc:postgresql://" + hostAndPort + "/" + cleanDbName + "?sslmode=prefer";
-
-            System.out.println("[RenderDatabaseUrlProcessor] Converted to JDBC URL: " + jdbcUrl);
-            System.out.println("[RenderDatabaseUrlProcessor] Using username: " + user);
-
-            Map<String, Object> props = new HashMap<>();
-            props.put("spring.datasource.url", jdbcUrl);
-            if (!user.isBlank()) {
-                props.put("spring.datasource.username", user);
-            }
-            if (!pass.isBlank()) {
-                props.put("spring.datasource.password", pass);
-            }
-
+            Map<String, String> parsed = parseDatabaseUrl(rawUrl);
+            Map<String, Object> props = new HashMap<>(parsed);
             environment.getPropertySources()
                     .addFirst(new MapPropertySource("renderDatabaseUrl", props));
-
+            System.out.println("[RenderDatabaseUrlProcessor] EnvironmentPostProcessor set spring.datasource.url: "
+                    + parsed.get("spring.datasource.url"));
         } catch (Exception e) {
-            System.err.println("[RenderDatabaseUrlProcessor] Failed to parse DATABASE_URL: " + e.getMessage());
-            System.err.println("[RenderDatabaseUrlProcessor] Raw URL (masked): " + rawUrl.replaceAll(":([^@]+)@", ":***@"));
+            System.err.println("[RenderDatabaseUrlProcessor] PostProcessor failed: " + e.getMessage());
         }
     }
 }
