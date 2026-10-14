@@ -7,10 +7,8 @@ databases:
 services:
   - type: web
     name: transporter-assignment-api
-    runtime: java
+    runtime: docker
     plan: free
-    buildCommand: mvn clean package -DskipTests
-    startCommand: java -jar target/transporter-assignment-1.0.0-SNAPSHOT.jar
     envVars:
       - key: DATABASE_URL
         fromDatabase:
