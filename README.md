@@ -1,49 +1,72 @@
-﻿# Transporter Assignment API
+# Transporter Assignment API
 
-> Optimally assign transporters to lanes across India — minimise total cost, ensure full lane coverage, within a max-transporter limit.
+> Optimally assign transporters to lanes across India — minimise total cost, ensure full lane coverage, within a configurable max-transporter limit.
 
-Built with **Java 26 · Spring Boot 3.2 · PostgreSQL 18 · Swagger/OpenAPI 3**
-
----
-
-## Prerequisites
-
-| Tool | Version |
-|---|---|
-| JDK | Java 26 |
-| Maven | 3.9.6 |
-| PostgreSQL | 18 |
+Built with **Java 17 · Spring Boot 3.2.5 · PostgreSQL · Hibernate 6 · Swagger/OpenAPI 3**
 
 ---
 
-## Database Setup
+## 🌐 Live Deployment
 
+The API is deployed and live on Render:
+
+| Service | Live URL | Status |
+|---|---|---|
+| **Interactive Swagger UI** | [https://transporter-assignment-api.onrender.com/swagger-ui.html](https://transporter-assignment-api.onrender.com/swagger-ui.html) | 🟢 Active |
+| **OpenAPI Specification (JSON)** | [https://transporter-assignment-api.onrender.com/api-docs](https://transporter-assignment-api.onrender.com/api-docs) | 🟢 Active |
+| **API Base URL** | [https://transporter-assignment-api.onrender.com](https://transporter-assignment-api.onrender.com) | 🟢 Active |
+
+---
+
+## 🛠️ Technology Stack & Versions
+
+| Tool | Version | Description |
+|---|---|---|
+| **Java** | 17 (LTS) | Targeted bytecode release (builds on JDK 17+) |
+| **Spring Boot** | 3.2.5 | Core web framework, Spring Data JPA, Jakarta Validation |
+| **Springdoc OpenAPI** | 2.5.0 | OpenAPI 3 spec & interactive Swagger UI |
+| **Database** | PostgreSQL 16+ / H2 | PostgreSQL for production/default, H2 in-memory for testing |
+| **Build Tool** | Maven 3.9+ | Build and dependency management |
+
+---
+
+## 🚀 Running Locally
+
+### Option 1: In-Memory H2 Database (Zero Setup)
+Runs without needing PostgreSQL installed locally:
+```bash
+mvn spring-boot:run -Dspring-boot.run.profiles=h2
+```
+*App starts at `http://localhost:8080` with H2 console at `http://localhost:8080/h2-console`*
+
+### Option 2: Local PostgreSQL
+1. Create the database in PostgreSQL:
 ```sql
--- Run once in PostgreSQL (psql or pgAdmin)
 CREATE DATABASE transporter_db;
 ```
+2. Run the application:
+```bash
+mvn spring-boot:run
+```
+*(Default settings in `application.yml`: `localhost:5432`, user `postgres`, password `postgre`)*
 
-| Property | Value |
-|---|---|
-| Host | `localhost` |
-| Port | `5432` |
-| Database | `transporter_db` |
-| Username | `postgres` |
-| Password | `postgre` |
-
----
-
-## Running the Application
-
-```powershell
-& "$env:USERPROFILE\apache-maven-3.9.6\bin\mvn.cmd" spring-boot:run
+### Option 3: Docker
+```bash
+docker build -t transporter-assignment-api .
+docker run -p 8080:8080 transporter-assignment-api
 ```
 
-App starts at **http://localhost:8080**
+---
+
+## 📖 Local Swagger UI & Documentation
+
+When running locally:
+* **Interactive Swagger UI**: [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
+* **Raw OpenAPI JSON**: [http://localhost:8080/api-docs](http://localhost:8080/api-docs)
 
 ---
 
-## API Reference
+## 📡 API Reference
 
 ### API 1 — Submit Input Data
 
@@ -114,7 +137,7 @@ App starts at **http://localhost:8080**
 
 ---
 
-## Sample Test Cases
+## 🧪 Sample Test Cases
 
 ### Test Case 1 — 5 Lanes, 7 Transporters
 
@@ -193,17 +216,9 @@ App starts at **http://localhost:8080**
 
 ---
 
-## Swagger UI
+## 🧪 Running Automated Tests
 
-| URL | Purpose |
-|---|---|
-| http://localhost:8080/swagger-ui.html | Interactive API tester |
-| http://localhost:8080/api-docs | Raw OpenAPI JSON |
-
----
-
-## Running Tests
-
-```powershell
-& "$env:USERPROFILE\apache-maven-3.9.6\bin\mvn.cmd" test
+Run the full suite of unit and integration tests (18 tests):
+```bash
+mvn test
 ```
