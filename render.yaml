@@ -11,6 +11,8 @@ services:
     envVars:
       - key: DATABASE_URL
         fromDatabase:
+       - key: SPRING_DATASOURCE_URL
+                 value: jdbc:${DATABASE_URL}
           name: transporter-db
           property: connectionString
       - key: DB_USERNAME
