@@ -1,9 +1,10 @@
 spring:
   datasource:
-    # Set by RenderDatabaseUrlProcessor or system properties
-    url: ${SPRING_DATASOURCE_URL:${spring.datasource.url:${JDBC_DATABASE_URL:jdbc:postgresql://localhost:5432/transporter_db}}}
-    username: ${spring.datasource.username:${DB_USERNAME:postgres}}
-    password: ${spring.datasource.password:${DB_PASSWORD:postgre}}
+    # Set by RenderDatabaseUrlProcessor when running on cloud/Render
+    # Falls back to local PostgreSQL properties if not on Render
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/transporter_db}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgre}
     driver-class-name: org.postgresql.Driver
     hikari:
       connection-timeout: 30000
