@@ -1,7 +1,6 @@
 databases:
   - name: transporter-db
     databaseName: transporter_db
-    user: postgres
     plan: free
 
 services:
